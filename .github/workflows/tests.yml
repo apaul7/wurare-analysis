@@ -1,0 +1,28 @@
+# Fast tiers on every push: awk/python tests, pysam tests, and the nextflow
+# runs that shim their tools with fakes. The docker e2e tier is excluded here
+# (it pulls gigabytes of biocontainers) -- see e2e.yml for the on-demand run.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NXF_SYNTAX_PARSER: v2
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+      - name: Run fast test tiers
+        run: |
+          EXCLUDE="test_grouping_e2e test_priority_e2e test_depth_e2e test_ploidy_e2e test_resume test_somalier_assumptions test_svdb_assumptions test_talos_load" \
+          ./tests/run.sh

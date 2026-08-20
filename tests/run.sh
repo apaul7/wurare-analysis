@@ -27,6 +27,19 @@ else
     targets=(tests/test_*.py)
 fi
 
+# EXCLUDE="test_foo test_bar" drops tests by name -- CI uses this to keep the
+# docker e2e tier out of the fast job, where it would otherwise pull gigabytes.
+if [ -n "${EXCLUDE:-}" ]; then
+    kept=()
+    for t in "${targets[@]}"; do
+        case " $EXCLUDE " in
+            *" $(basename "$t" .py) "*) ;;
+            *) kept+=("$t") ;;
+        esac
+    done
+    targets=("${kept[@]}")
+fi
+
 pass=0; fail=0; skip=0
 failed_names=()
 log=$(mktemp)
@@ -43,7 +56,11 @@ for t in "${targets[@]}"; do
         # A test that could not run says so on its first line rather than reporting a pass it
         # did not earn. Counted separately: a suite that is entirely skips is not a green one.
         if head -n1 "$log" | grep -q '^SKIP:'; then
-            printf 'skip %s  -- %s\n' "$name" "$(head -n1 "$log" | sed 's/^SKIP: //')"
+            reason=$(head -n1 "$log" | sed 's/^SKIP: //')
+            printf 'skip %s  -- %s\n' "$name" "$reason"
+            # Under GitHub Actions a skip is yellow, not silently green: each one
+            # becomes a warning annotation on the run.
+            [ -n "${GITHUB_ACTIONS:-}" ] && printf '::warning title=skipped %s::%s\n' "$name" "$reason"
             skip=$((skip+1))
         else
             printf 'ok   %s\n' "$name"
