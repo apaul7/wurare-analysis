@@ -1,0 +1,17 @@
+# Test environment for the annotate_svs pipeline.
+#   conda env create -f environment.yml
+#
+# svtk, duphold, truvari and AnnotSV are deliberately absent: svtk and duphold
+# have no osx-arm64 build, and truvari's pandas pins deadlock the classic
+# solver here. All four come from containers, which is how the pipeline runs on
+# the cluster anyway -- see the README section in nf/annotate_svs/ when it exists.
+name: annotate-svs
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - nextflow=26.04.6
+  - bcftools=1.24
+  - samtools=1.24
+  - htslib=1.24
+  - svdb=2.12.0

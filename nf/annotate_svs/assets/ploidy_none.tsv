@@ -1,0 +1,6 @@
+#sample	x_copies	y_copies	ped_sex	agreement
+# No ploidy was determined for this run -- either no alignments were supplied or
+# --somalier_sites was not set. tag_filters.awk reads this file, finds no sample in it, and
+# leaves chrX/chrY exempt from the depth tag, which is the behaviour that predates ploidy
+# awareness. A real table is written by check_somalier.awk; this exists so the process input
+# is always a file rather than a conditional channel shape.
