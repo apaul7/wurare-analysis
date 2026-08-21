@@ -322,7 +322,7 @@ def run_pipeline(tmp, binf, extra_args, tag, skippable_resources=True):
     unconditionally -- so the documented command could not be copy-pasted.
     """
     trace = tmp / f"trace_{tag}.txt"
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2",
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false",
                PATH=f"{binf}:{os.environ['PATH']}")
     cmd = ["nextflow", "run", str(MAIN),
            "-c", "test.config",
@@ -355,6 +355,24 @@ def run_pipeline(tmp, binf, extra_args, tag, skippable_resources=True):
     # submitted -- so it survives a run that dies partway.
     named = {m.split(":")[-1] for m in re.findall(r"annotate_snps:[A-Za-z0-9_:]+", out)}
     return in_trace, named, out
+
+
+def trace_stats(trace):
+    """(completed, failed, cached) task counts from a -with-trace TSV, or None if the
+    trace was never written. The console's run tally ("[SUCCESS] completed=...") is not
+    printed on every platform -- measured missing on Linux with the same Nextflow build
+    that prints it on macOS -- so tests must count statuses here instead of scraping it.
+    """
+    if not trace.is_file():
+        return None
+    lines = trace.read_text().splitlines()
+    if not lines:
+        return None
+    status_col = lines[0].split("\t").index("status")
+    statuses = [cols[status_col] for l in lines[1:]
+                if len(cols := l.split("\t")) > status_col]
+    return (statuses.count("COMPLETED"), statuses.count("FAILED"),
+            statuses.count("CACHED"))
 
 
 def relate_args(samples_tsv):

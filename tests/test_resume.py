@@ -32,12 +32,15 @@ the repo root would leave the run's cache sitting in the working tree.
 """
 
 import os
-import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from test_skip_params import trace_stats
 
 ROOT = Path(__file__).parent.parent
 MAIN = ROOT / "nf" / "annotate_svs" / "main.nf"
@@ -77,7 +80,9 @@ def write_vcf(tmp, name, samples):
 
 def run_pipeline(tmp, env, resume):
     """Returns (completed, cached), or None if the run failed."""
+    trace = tmp / f"trace_{'second' if resume else 'first'}.txt"
     cmd = ["nextflow", "-q", "run", str(MAIN), "-with-docker",
+           "-with-trace", str(trace),
            "--vcfs", str(tmp / "vcfs.csv"), "--ped", str(tmp / "cohort.ped"),
            "--outdir", str(tmp / "results")]
     if resume:
@@ -86,12 +91,12 @@ def run_pipeline(tmp, env, resume):
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp), env=env)
     out = r.stdout + r.stderr
     which = "second" if resume else "first"
-    m = re.search(r"completed=(\d+) failed=(\d+) cached=(\d+)", out)
-    if not m:
+    stats = trace_stats(trace)
+    if stats is None:
         check(f"the {which} run reports a task tally", False,
               out.strip().splitlines()[-1] if out.strip() else "no output")
         return None
-    completed, failed, cached = (int(m.group(i)) for i in (1, 2, 3))
+    completed, failed, cached = stats
     if failed:
         errors = [l for l in out.splitlines() if l.startswith("[ERROR]")]
         check(f"the {which} run succeeds", False, "; ".join(errors[:2]))
@@ -105,7 +110,7 @@ def main():
             print(f"SKIP: {tool} not available")
             return 0
 
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2")
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false")
 
     # ONE directory for both runs. See the module docstring: a fresh one per run changes
     # every input file's mtime and forces a total cache miss regardless of the bug.

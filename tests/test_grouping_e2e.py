@@ -130,7 +130,7 @@ def main():
         print("SKIP: docker daemon not running")
         return 0
 
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2")
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false")
 
     print("same sample, different sheet labels -- must MERGE at axis A")
     with tempfile.TemporaryDirectory() as td:

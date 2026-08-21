@@ -130,7 +130,7 @@ def main():
             print(f"SKIP: {tool} not available")
             return 0
 
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2")
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false")
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)

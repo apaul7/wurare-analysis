@@ -29,7 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from test_skip_params import FAKES, ROOT, build_env, write_exec
+from test_skip_params import FAKES, ROOT, build_env, trace_stats, write_exec
 
 MAIN = ROOT / "nf" / "annotate_snps" / "main.nf"
 
@@ -68,12 +68,13 @@ def main():
             return 1
         write_exec(binf / "bcftools", body)
 
-        env = dict(os.environ, NXF_SYNTAX_PARSER="v2",
+        env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false",
                    PATH=f"{binf}:{os.environ['PATH']}")
         # The skip path, as in test_resume_snps: quick, and it still crosses list_chroms,
         # the interval filter under test, split_vcf and the whole ANNOVAR chain.
         cmd = ["nextflow", "run", str(MAIN),
                "-c", "test.config",
+               "-with-trace", "trace.txt",
                "--vcf", "in.vcf.gz", "--tbi", "in.vcf.gz.tbi",
                "--cohort", "TEST", "--data_type", "wgs",
                "--reference.fa", "ref.fa", "--reference.fai", "ref.fa.fai",
@@ -88,12 +89,13 @@ def main():
         r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp), env=env)
         out = r.stdout + r.stderr
 
-        m = re.search(r"completed=(\d+) failed=(\d+)", out)
-        if not m:
-            print(f"  FAIL  no run summary\n{out.strip()[-800:]}")
+        stats = trace_stats(tmp / "trace.txt")
+        if stats is None:
+            print(f"  FAIL  no trace written\n{out.strip()[-800:]}")
             return 1
-        check("the run completes with no failed tasks", m.group(2) == "0",
-              f"failed={m.group(2)}\n{out.strip()[-800:]}")
+        _completed, failed, _cached = stats
+        check("the run completes with no failed tasks", failed == 0,
+              f"failed={failed}\n{out.strip()[-800:]}")
 
         work = tmp / "work"
         for c in KEPT:

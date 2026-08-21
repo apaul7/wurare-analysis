@@ -68,6 +68,9 @@ for t in "${targets[@]}"; do
         fi
     else
         printf 'FAIL %s\n' "$name"
+        # The tests print their "FAIL <check>" verdicts before dumping tool output,
+        # so a bare tail can scroll the actual reason out of view. Show both.
+        grep -a '^ *FAIL' "$log" | head -10 | sed 's/^/       | /'
         sed 's/^/       | /' "$log" | tail -30
         fail=$((fail+1)); failed_names+=("$name")
     fi

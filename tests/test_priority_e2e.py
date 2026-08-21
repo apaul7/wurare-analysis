@@ -118,7 +118,7 @@ def main():
         print("SKIP: docker daemon not running")
         return 0
 
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2")
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false")
 
     print("axis A -- manta outranks an alphabetically earlier caller")
     with tempfile.TemporaryDirectory() as td:

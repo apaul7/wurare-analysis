@@ -119,7 +119,7 @@ def run_harness(tmp, binf, table, tag):
     rundir.mkdir()
     (rundir / "test.config").write_text(
         "process {\n    resourceLimits = [ memory: 2.GB, cpus: 2 ]\n}\n")
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2",
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false",
                PATH=f"{binf}:{os.environ['PATH']}")
     trace = rundir / "trace.txt"
     r = subprocess.run(

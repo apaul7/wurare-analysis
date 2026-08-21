@@ -31,7 +31,6 @@ Needs `nextflow`. Skips cleanly without it.
 """
 
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -40,7 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from test_skip_params import ROOT, build_env
+from test_skip_params import ROOT, build_env, trace_stats
 
 MAIN = ROOT / "nf" / "annotate_snps" / "main.nf"
 
@@ -57,10 +56,12 @@ def check(name, condition, detail=""):
 
 def run_pipeline(tmp, binf, resume):
     """Returns (completed, cached), or None if the run failed."""
-    env = dict(os.environ, NXF_SYNTAX_PARSER="v2",
+    env = dict(os.environ, NXF_SYNTAX_PARSER="v2", NXF_ANSI_LOG="false",
                PATH=f"{binf}:{os.environ['PATH']}")
+    trace = tmp / f"trace_{'second' if resume else 'first'}.txt"
     cmd = ["nextflow", "run", str(MAIN),
            "-c", "test.config",
+           "-with-trace", str(trace),
            "--vcf", "in.vcf.gz", "--tbi", "in.vcf.gz.tbi",
            "--cohort", "TEST", "--data_type", "wgs",
            "--reference.fa", "ref.fa", "--reference.fai", "ref.fa.fai",
@@ -79,12 +80,12 @@ def run_pipeline(tmp, binf, resume):
         cmd.append("-resume")
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp), env=env)
     out = r.stdout + r.stderr
-    m = re.search(r"completed=(\d+) failed=(\d+) cached=(\d+)", out)
-    if not m:
-        print(f"  FAIL  no run summary (resume={resume})\n{out.strip()[-800:]}")
+    stats = trace_stats(trace)
+    if stats is None:
+        print(f"  FAIL  no trace written (resume={resume})\n{out.strip()[-800:]}")
         failures.append("run summary")
         return None
-    completed, failed, cached = (int(m.group(i)) for i in (1, 2, 3))
+    completed, failed, cached = stats
     if failed:
         print(f"  FAIL  {failed} task(s) failed (resume={resume})\n{out.strip()[-800:]}")
         failures.append("failed tasks")
